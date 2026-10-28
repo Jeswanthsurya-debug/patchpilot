@@ -1,0 +1,187 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatchPilot</title>
+<style>
+:root{--ink:#080d1b;--glass:#111a30b8;--line:#2a3860;--tx:#eaeefb;--mu:#8793b5;--amber:#ffb454;--pass:#7fe08a;--fail:#ff6b6b;--blue:#6f8cff}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-snap-type:y proximity}
+body{margin:0;background:var(--ink);color:var(--tx);font:16px/1.55 "Avenir Next","Segoe UI",system-ui,sans-serif;overflow-x:hidden}
+#gl{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+.nav{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:16px 28px;backdrop-filter:blur(8px)}
+.nav b{font-size:18px;letter-spacing:-.02em}.badge{font-size:13px;color:var(--mu);border:1px solid var(--line);border-radius:99px;padding:4px 12px}
+.panel{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:90px 7vw 50px;scroll-snap-align:start}
+.hero{align-items:flex-start;pointer-events:none}.hero *{pointer-events:auto}
+h1{font-size:clamp(44px,8vw,104px);line-height:.95;letter-spacing:-.045em;margin:0 0 18px;max-width:11ch}
+.sub{color:var(--mu);font-size:19px;max-width:34ch;margin:0 0 30px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+button{position:relative;overflow:hidden;border:0;border-radius:10px;padding:13px 24px;font:600 16px inherit;cursor:pointer;background:var(--amber);color:#1b1200;transition:transform .2s,box-shadow .2s}
+button.ghost{background:transparent;color:var(--tx);border:1px solid var(--line)}
+button:hover{transform:translateY(-3px);box-shadow:0 10px 30px #ffb45440}button:active{transform:scale(.96)}button:disabled{opacity:.5;cursor:wait}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+.ripple{position:absolute;border-radius:50%;background:#fff6;transform:scale(0);animation:rp .6s ease-out forwards;pointer-events:none}
+@keyframes rp{to{transform:scale(3.2);opacity:0}}
+.hint{margin-top:44px;color:var(--mu);font-size:13px;animation:bob 2s ease-in-out infinite}@keyframes bob{50%{transform:translateY(8px)}}
+.glass{background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:24px;backdrop-filter:blur(14px);max-width:760px}
+h2{font-size:clamp(28px,4vw,44px);letter-spacing:-.03em;margin:0 0 18px}
+label{color:var(--mu);font-size:13px}
+input,textarea{width:100%;background:#0a1226;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit;margin:4px 0 14px;transition:border-color .2s,box-shadow .2s}
+input:focus,textarea:focus{border-color:var(--amber);box-shadow:0 0 0 4px #ffb45422;outline:0}
+textarea{min-height:92px;font:14px ui-monospace,Menlo,monospace}
+.chips{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid var(--line);border-radius:12px;background:var(--glass);transition:.4s}
+.chip i{width:12px;height:12px;border-radius:50%;background:#4a5a85;transition:.4s}.chip small{display:block;color:var(--mu);font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip.running{border-color:var(--amber)}.chip.running i{background:var(--amber);animation:pl 1s infinite}
+.chip.done i{background:var(--pass);box-shadow:0 0 14px var(--pass)}.chip.failed i{background:var(--fail)}
+@keyframes pl{0%{box-shadow:0 0 0 0 #ffb454aa}100%{box-shadow:0 0 0 14px #ffb45400}}
+.meter{color:var(--mu);font-size:14px;margin:6px 0 16px}.meter b{color:var(--tx);font-variant-numeric:tabular-nums}
+.rail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:10px 7vw 24px;margin:0 -7vw;cursor:grab;scrollbar-width:none;min-height:200px}
+.rail::-webkit-scrollbar{display:none}.rail.drag{scroll-snap-type:none;cursor:grabbing}
+.card{flex:0 0 min(560px,86vw);scroll-snap-align:center;transition:transform .15s;animation:in .5s cubic-bezier(.2,.8,.2,1);max-width:none}
+@keyframes in{from{opacity:0;transform:translateX(60px) scale(.94)}}
+.card h3{margin:0 0 8px;font-size:17px}.tag{color:var(--mu);font-weight:400;font-size:12px}
+pre{margin:8px 0 0;background:#070c19;border-radius:10px;padding:12px;overflow:auto;font:12.5px/1.5 ui-monospace,Menlo,monospace;max-height:300px;white-space:pre-wrap}
+.add{color:var(--pass)}.del{color:var(--fail)}
+.banner{font-size:22px;font-weight:700;padding:14px 20px;border-radius:12px;margin-top:6px;animation:in .5s;max-width:760px}
+.banner.ok{background:#7fe08a1f;color:var(--pass)}.banner.bad{background:#ff6b6b1f;color:var(--fail)}
+.empty{color:var(--mu)}
+#toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,20px);opacity:0;z-index:9;background:var(--glass);border:1px solid var(--amber);border-radius:12px;padding:10px 18px;backdrop-filter:blur(10px);transition:.3s;pointer-events:none}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.rv{opacity:0;transform:translateY(46px);transition:opacity .8s,transform .8s cubic-bezier(.2,.8,.2,1)}.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rv{opacity:1;transform:none}html{scroll-behavior:auto}}
+</style></head><body>
+<canvas id="gl"></canvas><div id="toast"></div>
+<div class="nav"><b>PatchPilot</b><span class="badge" id="mode">Live mode</span></div>
+
+<section class="panel hero" id="top">
+ <h1>Bugs in. Verified fixes out.</h1>
+ <p class="sub">Three Nemotron agents plan, patch and test your code, live on Nebius Token Factory.</p>
+ <div class="row"><button id="demo">Play demo</button><button class="ghost" id="own">Try your own bug</button></div>
+ <div class="hint">Scroll, or click an agent in the 3D scene</div>
+</section>
+
+<section class="panel" id="lab">
+ <div class="glass rv">
+  <h2>What's broken?</h2>
+  <label for="repo">Repo (example:py_bug or an https git URL)</label><input id="repo" value="example:py_bug">
+  <label for="bug">Bug description or failing test output</label>
+  <textarea id="bug">average([2, 4, 6]) returns 6.0 instead of 4.0, and test_calc.py fails.</textarea>
+  <button id="go">Fix it</button>
+ </div>
+</section>
+
+<section class="panel" id="out">
+ <h2 class="rv">Watch the agents work</h2>
+ <div class="chips rv">
+  <div class="chip" id="c0"><i></i><div>Planner<small>Nemotron Ultra</small></div></div>
+  <div class="chip" id="c1"><i></i><div>Coder<small>Nemotron Super</small></div></div>
+  <div class="chip" id="c2"><i></i><div>Tester<small>Nemotron Nano</small></div></div>
+ </div>
+ <div class="meter">Tokens used <b id="tok">0</b></div>
+ <div class="rail" id="rail"><div class="glass card empty">Results show up here. Swipe or drag to move through them.</div></div>
+ <div id="end"></div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),RM=matchMedia("(prefers-reduced-motion:reduce)").matches;
+const esc=s=>(s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const cols={idle:0x4a5a85,running:0xffb454,done:0x7fe08a,failed:0xff6b6b};
+const ROLES=["Planner (Nemotron Ultra): finds the root cause","Coder (Nemotron Super): writes the patch","Tester (Nemotron Nano): writes and runs tests"];
+let st=["idle","idle","idle"],mx=0,my=0,bursts=[],T=window.THREE;
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2200)}
+
+/* ---------- 3D scene ---------- */
+let sats=[],core,scene,cam,ren,ray,pulse=[0,0,0];
+if(T){
+ ren=new T.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));
+ scene=new T.Scene();cam=new T.PerspectiveCamera(55,1,.1,100);cam.position.z=9;ray=new T.Raycaster();
+ core=new T.Group();
+ core.add(new T.Mesh(new T.IcosahedronGeometry(1.7,1),new T.MeshBasicMaterial({color:0x6f8cff,wireframe:true,transparent:true,opacity:.5})));
+ core.add(new T.Mesh(new T.IcosahedronGeometry(.95,0),new T.MeshBasicMaterial({color:0xffb454})));
+ scene.add(core);
+ for(let i=0;i<3;i++){
+  const g=new T.Group();g.rotation.set(Math.PI/2+i*.4,i*.55,0);
+  g.add(new T.Mesh(new T.TorusGeometry(3.2+i*.9,.012,8,140),new T.MeshBasicMaterial({color:0x2a3860})));
+  const s=new T.Mesh(new T.OctahedronGeometry(.36+i*.04),new T.MeshBasicMaterial({color:cols.idle}));s.userData.i=i;g.add(s);
+  g.userData={s,r:3.2+i*.9,ph:i*2.1};scene.add(g);sats.push(g)}
+ const n=700,p=new Float32Array(n*3);for(let i=0;i<n*3;i++)p[i]=(Math.random()-.5)*50;
+ const sg=new T.BufferGeometry();sg.setAttribute("position",new T.BufferAttribute(p,3));
+ scene.add(new T.Points(sg,new T.PointsMaterial({color:0x8793b5,size:.05})));
+ const rs=()=>{ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();core.position.x=innerWidth>800?3:0};rs();addEventListener("resize",rs);
+ let a=0;(function loop(){requestAnimationFrame(loop);
+  const run=st.includes("running"),k=RM?0:1;a+=(run?.03:.006)*k;
+  const max=Math.max(1,document.documentElement.scrollHeight-innerHeight),p=scrollY/max;
+  cam.position.z=9-p*2.5;cam.position.x+=(mx*1.2-cam.position.x)*.05;cam.position.y+=(-my*.8-p*1.5-cam.position.y)*.05;cam.lookAt(core.position.x*.5,0,0);
+  scene.rotation.y=p*1.6;core.rotation.y+=(run?.03:.006)*k;core.rotation.x+=.004*k;
+  sats.forEach((g,i)=>{const s=g.userData.s,t=a*(1+i*.3)+g.userData.ph;s.position.set(Math.cos(t)*g.userData.r,Math.sin(t)*g.userData.r,0);s.rotation.x+=.03*k;s.rotation.y+=.04*k;
+   pulse[i]*=.92;s.scale.setScalar(1+pulse[i]+(st[i]==="running"?.25+Math.sin(a*8)*.15:0))});
+  bursts=bursts.filter(b=>{b.life--;const q=b.o.geometry.attributes.position;for(let j=0;j<q.count;j++){q.array[j*3]+=b.v[j*3];q.array[j*3+1]+=b.v[j*3+1];q.array[j*3+2]+=b.v[j*3+2]}q.needsUpdate=true;b.o.material.opacity=b.life/90;if(b.life<=0){scene.remove(b.o);return false}return true});
+  ren.render(scene,cam)})();
+}
+function boom(c){if(!T)return;const n=220,p=new Float32Array(n*3),v=new Float32Array(n*3);
+ for(let i=0;i<n*3;i++)v[i]=(Math.random()-.5)*.28;const g=new T.BufferGeometry();g.setAttribute("position",new T.BufferAttribute(p,3));
+ const o=new T.Points(g,new T.PointsMaterial({color:c,size:.09,transparent:true}));o.position.copy(core.position);scene.add(o);bursts.push({o,v,life:90})}
+function setState(i,s){st[i]=s;$("c"+i).className="chip "+(s==="idle"?"":s);if(T)sats[i].userData.s.material.color.setHex(cols[s])}
+addEventListener("pointermove",e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5});
+addEventListener("click",e=>{if(!T||e.target.closest("button,input,textarea,.rail,.glass"))return;
+ ray.setFromCamera({x:e.clientX/innerWidth*2-1,y:-(e.clientY/innerHeight)*2+1},cam);
+ const h=ray.intersectObjects(sats.map(g=>g.userData.s))[0];if(h){const i=h.object.userData.i;pulse[i]=1;toast(ROLES[i])}});
+
+/* ---------- click ripple, scroll reveal, swipe, tilt ---------- */
+document.addEventListener("pointerdown",e=>{const b=e.target.closest("button");if(!b)return;const r=b.getBoundingClientRect(),d=Math.max(r.width,r.height),s=document.createElement("span");
+ s.className="ripple";s.style.cssText=`width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`;b.appendChild(s);setTimeout(()=>s.remove(),650)});
+const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting&&e.target.classList.add("in")),{threshold:.2});document.querySelectorAll(".rv").forEach(e=>io.observe(e));
+const rail=$("rail");let dn=false,sx=0,sl=0;
+rail.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&!e.target.closest("pre")){dn=true;sx=e.clientX;sl=rail.scrollLeft;rail.classList.add("drag")}});
+addEventListener("pointermove",e=>{if(dn)rail.scrollLeft=sl-(e.clientX-sx)});addEventListener("pointerup",()=>{dn=false;rail.classList.remove("drag")});
+rail.addEventListener("pointermove",e=>{const c=e.target.closest(".card");if(!c||dn)return;const r=c.getBoundingClientRect();
+ c.style.transform=`perspective(800px) rotateY(${((e.clientX-r.left)/r.width-.5)*8}deg) rotateX(${-((e.clientY-r.top)/r.height-.5)*8}deg)`});
+rail.addEventListener("pointerout",e=>{const c=e.target.closest(".card");if(c)c.style.transform=""});
+
+/* ---------- agent events (shared by live + demo) ---------- */
+const idx={planner:0,coder:1,tester:2};
+function card(h,body){if(rail.querySelector(".empty"))rail.innerHTML="";const d=document.createElement("div");d.className="glass card";d.innerHTML=`<h3>${h}</h3>${body}`;rail.appendChild(d);setTimeout(()=>rail.scrollTo({left:rail.scrollWidth,behavior:"smooth"}),60)}
+function cdiff(d){return d.split("\n").map(l=>l[0]==="+"&&l[1]!=="+"?`<span class="add">${esc(l)}</span>`:l[0]==="-"&&l[1]!=="-"?`<span class="del">${esc(l)}</span>`:esc(l)).join("\n")}
+function handle(m){if(m.total)$("tok").textContent=m.total.toLocaleString();
+ if(m.step==="load")card("Repo loaded",`<span class="tag">${esc(m.detail)}</span>`);
+ else if(m.step in idx){const i=idx[m.step];setState(i,m.status);if(m.model)$("c"+i).querySelector("small").textContent=m.model.split("/").pop();
+  if(m.step==="planner"&&m.status==="done")card("Root cause",`<p>${esc(m.detail)}</p><ol>${(m.steps||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol>`);
+  if(m.step==="coder"&&m.status==="done")card(`Patch, attempt ${m.attempt}`,`<pre>${cdiff(m.diff)}</pre>`);
+  if(m.step==="tester"&&m.status!=="running"){card(`Tests ${m.status==="done"?"passed":"failed"}, attempt ${m.attempt}`,`<pre>${esc(m.output)}</pre>`);if(m.status==="failed"){setState(1,"idle");pulse[2]=1}}}
+ else if(m.step==="final"){const ok=m.status==="done";$("go").disabled=$("demo").disabled=false;
+  $("end").innerHTML=`<div class="banner ${ok?"ok":"bad"}">${ok?"Fixed and verified":"Could not fix within the retry limit"}</div>`;
+  if(ok){boom(0x7fe08a);boom(0xffb454);card("PR description",`<pre>${esc(m.summary)}</pre>`);if(T)core.children[1].material.color.setHex(0x7fe08a)}}
+ else if(m.step==="error"){$("go").disabled=$("demo").disabled=false;card("Something went wrong",`<pre>${esc(m.detail)}</pre>`)}}
+function reset(){rail.innerHTML="";$("end").innerHTML="";$("tok").textContent=0;[0,1,2].forEach(i=>setState(i,"idle"));if(T)core.children[1].material.color.setHex(0xffb454)}
+
+function live(){reset();$("mode").textContent="Live mode";$("go").disabled=$("demo").disabled=true;$("out").scrollIntoView();
+ const es=new EventSource("/api/run?repo="+encodeURIComponent($("repo").value)+"&bug="+encodeURIComponent($("bug").value));
+ es.onmessage=e=>{const m=JSON.parse(e.data);handle(m);if(m.step==="final"||m.step==="error")es.close()};
+ es.onerror=()=>{es.close();$("go").disabled=$("demo").disabled=false}}
+
+/* ---------- scripted demo (no API calls, always works on camera) ---------- */
+const D1="--- a/calc.py\n+++ b/calc.py\n def average(nums):\n-    if not nums:\n-        return 0\n-    return sum(nums) / (len(nums) - 1)\n+    return sum(nums) / len(nums)";
+const D2="--- a/calc.py\n+++ b/calc.py\n def average(nums):\n     if not nums:\n         return 0\n-    return sum(nums) / (len(nums) - 1)\n+    return sum(nums) / len(nums)";
+const M={p:"nvidia/Nemotron-3-Ultra-550b-a55b",c:"nvidia/nemotron-3-super-120b-a12b",t:"nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"};
+const DEMO=[
+[500,{step:"load",status:"done",detail:"Loaded 2 files"}],
+[300,{step:"planner",status:"running",model:M.p}],
+[2400,{step:"planner",status:"done",model:M.p,total:1840,detail:"average() divides by len(nums) - 1 instead of len(nums), so every result is too high.",steps:["Change the divisor to len(nums)","Keep the empty-list guard","Add a regression test"]}],
+[400,{step:"coder",status:"running",model:M.c,attempt:1}],
+[2000,{step:"coder",status:"done",model:M.c,attempt:1,total:2960,diff:D1}],
+[400,{step:"tester",status:"running",model:M.t,attempt:1}],
+[1700,{step:"tester",status:"failed",model:M.t,attempt:1,total:3220,output:"FAILED test_calc.py::test_empty - ZeroDivisionError: division by zero\n1 failed, 1 passed in 0.03s"}],
+[500,{step:"coder",status:"running",model:M.c,attempt:2}],
+[1800,{step:"coder",status:"done",model:M.c,attempt:2,total:4150,diff:D2}],
+[400,{step:"tester",status:"running",model:M.t,attempt:2}],
+[1500,{step:"tester",status:"done",model:M.t,attempt:2,total:4310,output:"3 passed in 0.02s"}],
+[600,{step:"final",status:"done",total:4310,summary:"### Fix average() divisor\n\n- Divide by len(nums), not len(nums) - 1\n- Keep the empty-list guard (the first attempt removed it and broke test_empty)\n- Add a regression test\n\nVerified: 3 tests pass."}]];
+async function typeText(el,t){el.value="";for(const ch of t){el.value+=ch;await new Promise(r=>setTimeout(r,RM?0:22))}}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function demo(){reset();$("mode").textContent="Demo mode";$("go").disabled=$("demo").disabled=true;
+ $("lab").scrollIntoView();await wait(900);$("repo").value="example:py_bug";
+ await typeText($("bug"),"average([2, 4, 6]) returns 6.0 instead of 4.0, and test_calc.py fails.");await wait(400);
+ const b=$("go"),r=b.getBoundingClientRect();b.dispatchEvent(new PointerEvent("pointerdown",{bubbles:true,clientX:r.left+r.width/2,clientY:r.top+r.height/2}));await wait(500);
+ $("out").scrollIntoView();await wait(900);for(const[d,m]of DEMO){await wait(d);handle(m)}}
+
+$("demo").onclick=demo;$("own").onclick=()=>{$("lab").scrollIntoView();$("bug").focus()};$("go").onclick=live;
+addEventListener("keydown",e=>{if(e.key==="d"&&!e.target.closest("input,textarea")&&!$("demo").disabled)demo()});
+</script></body></html>
