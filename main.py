@@ -1,6 +1,6 @@
 import json, os
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
 import agents, config, runner
 
 app = FastAPI(title="PatchPilot")
@@ -8,9 +8,23 @@ app = FastAPI(title="PatchPilot")
 def ev(**k):
     return f"data: {json.dumps(k)}\n\n"
 
+def _index_path():
+    for d in ("public", "static"):
+        p = os.path.join(runner.HERE, d, "index.html")
+        if os.path.exists(p):
+            return p
+
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(runner.HERE, "static", "index.html"))
+    p = _index_path()
+    if p:
+        return FileResponse(p)
+    return HTMLResponse("<pre>index.html not found. Files here: " + ", ".join(sorted(os.listdir(runner.HERE))) + "</pre>", status_code=500)
+
+@app.get("/api/health")
+def health():
+    return {"key_set": bool(config.API_KEY), "index": bool(_index_path()),
+            "examples": os.path.isdir(os.path.join(runner.HERE, "examples")), "files": sorted(os.listdir(runner.HERE))}
 
 @app.get("/api/models")
 def models():

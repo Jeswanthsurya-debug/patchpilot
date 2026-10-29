@@ -2,7 +2,7 @@ import json, re
 from openai import OpenAI
 import config
 
-client = OpenAI(base_url=config.BASE_URL, api_key=config.API_KEY)
+client = OpenAI(base_url=config.BASE_URL, api_key=config.API_KEY or "missing")
 
 def ask(model, system, user, retries=2):
     """Call a Nemotron model on Nebius Token Factory; validate JSON, retry on bad output."""
